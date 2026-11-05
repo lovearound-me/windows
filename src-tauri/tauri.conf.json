@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Love Around",
+  "mainBinaryName": "LoveAround",
+  "version": "0.1.0",
+  "identifier": "me.lovearound.windows",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Love Around",
+    "copyright": "Love Around",
+    "category": "Utility",
+    "shortDescription": "Love Around",
+    "longDescription": "Tap when you think of someone, and their screen softly glows.",
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English", "Spanish", "PortugueseBR", "German", "French", "Italian", "Polish", "Turkish", "Ukrainian", "Russian", "Indonesian", "Korean", "SimpChinese"],
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico"
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": { "schemes": ["lovearound", "needed"] }
+    },
+    "updater": {
+      "endpoints": ["https://lovearound.me/download/windows/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVDMDM1NDZDRUVCREM5MgpSV1NTM092T1JqWEFEcG8wbWRkblBVMW9ubE5nMDNxM3pQenZ2Y3UvZGZXV3ZuUVp1VzFGWjYrdQo=",
+      "windows": { "installMode": "passive" }
+    }
+  }
+}

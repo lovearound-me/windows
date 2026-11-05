@@ -1,0 +1,13 @@
+# The Windows app is cross-built on Linux: Rust's MSVC target with the
+# Windows SDK and CRT that cargo-xwin downloads, and NSIS for the installer.
+FROM rust:1.90-bookworm
+# libayatana-appindicator: tauri-cli looks for it on a Linux host whenever
+# the tray is on, even for a Windows bundle.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      nsis lld llvm clang libayatana-appindicator3-dev pkg-config && rm -rf /var/lib/apt/lists/*
+RUN rustup target add x86_64-pc-windows-msvc
+RUN cargo install --locked cargo-xwin@0.18.6 \
+ && cargo install --locked tauri-cli@2.8.4
+# The SDK and CRT once, in the image, instead of on every build.
+ENV XWIN_CACHE_DIR=/opt/xwin XWIN_ACCEPT_LICENSE=1
+WORKDIR /src

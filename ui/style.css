@@ -1,0 +1,159 @@
+/* The menu's look, as on the Mac: warm paper, brown ink, one color per
+   contact; at night, dark cocoa and cream. */
+:root {
+  --ink: #3B2A23; --muted: #6E554A; --faint: #7A6156;
+  --paper: #FFFBF6; --field: #F8EFE6; --well: #F2E6DA; --raised: #FFFBF6; --input: #FFFFFF;
+  --link: #B83A4E; --heart: #E0596B; --heart-soft: #FDE3E6; --heart-deep: #8E2537;
+  --ok: #39744A; --danger: #B3261E; --hairline: rgba(84, 48, 30, .22);
+  --switch-on: #3FA05A; --star: #D99A1E; --star-off: #B9A596;
+  --anyone-1: #FBE3D2; --anyone-2: #FCE6EA; --anyone-3: #F3E4F3;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #F3E6DC; --muted: #C7B0A2; --faint: #A8917F;
+    --paper: #2A211D; --field: #372C27; --well: #40342E; --raised: #5A4A42; --input: #221B18;
+    --link: #F28C9B; --heart: #EC6F80; --heart-soft: #4A2B31; --heart-deep: #FFB8C2;
+    --ok: #8DCB9B; --danger: #FF8A80; --hairline: rgba(255, 235, 220, .16);
+    --star: #E8B54F; --star-off: #7D6A5E;
+    --anyone-1: #4A3226; --anyone-2: #4A2C33; --anyone-3: #3E2C40;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
+body {
+  font: 13px/1.35 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  -webkit-user-select: none; user-select: none; cursor: default; overflow: hidden;
+}
+input, textarea { -webkit-user-select: text; user-select: text; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:disabled { cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--heart); outline-offset: 1px; }
+svg.icon { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+svg.icon.filled { fill: currentColor; stroke: none; }
+
+.col { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; }
+.grow { flex: 1; min-width: 0; }
+.ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.center { text-align: center; }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.danger { color: var(--danger); }
+.ok { color: var(--ok); }
+.link { color: var(--link); }
+.small { font-size: 12px; }
+/* A sign-in error: red, right under the button, so it isn't read as a hint. */
+.error { display: flex; align-items: flex-start; justify-content: center; gap: 6px; color: var(--danger); font-size: 12.5px; font-weight: 600; text-align: left; }
+.error .icon { flex: none; margin-top: 1px; }
+.notice { color: var(--ok); }
+.title { font-size: 15px; font-weight: 600; }
+.caption { font-size: 12px; font-weight: 600; color: var(--muted); }
+.note { font-size: 11.5px; color: var(--faint); }
+.card { background: var(--field); border-radius: 10px; }
+hr { border: 0; border-top: 1px solid var(--hairline); margin: 2px 0; width: 100%; }
+
+/* ---- buttons ---- */
+.primary, .secondary {
+  width: 100%; height: 40px; border-radius: 10px; font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+}
+.primary { background: var(--ink); color: var(--paper); }
+.primary:active { opacity: .85; }
+.primary:disabled { opacity: .45; }
+.secondary { background: var(--paper); box-shadow: inset 0 0 0 1px var(--hairline); }
+.secondary:active { background: var(--field); }
+.small-button {
+  flex: 1; height: 32px; border-radius: 8px; font-size: 12.5px;
+  background: var(--paper); box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.small-button:active { background: var(--field); }
+.pill { height: 26px; padding: 0 12px; border-radius: 13px; font-size: 12.5px; font-weight: 500; background: var(--field); }
+.pill.danger-fill { background: var(--danger); color: var(--paper); }
+.icon-button { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 15px; border-radius: 8px; }
+.icon-button:hover { background: var(--field); }
+.link-row { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 4px; color: var(--link); font-size: 13.5px; width: 100%; text-align: left; }
+.link-row .icon { width: 18px; }
+.text-button { font-size: 12.5px; }
+
+/* ---- fields ---- */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field input {
+  height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--hairline);
+  background: var(--input); color: var(--ink); font: inherit; font-size: 13.5px; outline: none;
+}
+.field input:focus { border-color: var(--heart); }
+input::placeholder { color: var(--faint); opacity: .8; }
+.search { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border-radius: 9px; background: var(--field); }
+.search .icon { color: var(--faint); font-size: 12px; }
+.search input { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--ink); font: inherit; }
+
+.banner { display: flex; align-items: baseline; gap: 8px; padding: 9px 10px; border-radius: 9px; background: var(--field); color: var(--muted); font-size: 12.5px; }
+.banner .icon { position: relative; top: 2px; }
+
+/* ---- switches and sliders ---- */
+.switch-row { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; font-size: 13.5px; }
+.switch { position: relative; width: 32px; height: 18px; border-radius: 9px; background: var(--star-off); transition: background .15s; flex: none; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.switch.on { background: var(--switch-on); }
+.switch.on::after { transform: translateX(14px); }
+select.language { height: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--well); background: var(--input); color: var(--ink); font: inherit; font-size: 13px; }
+input[type=range] { width: 100%; accent-color: var(--heart); margin: 4px 0; }
+input[type=range]:disabled { opacity: .5; }
+
+/* ---- people ---- */
+.avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; background: var(--paper); flex: none; }
+.contact-row { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 10px; border-radius: 11px; width: 100%; text-align: left; transition: background .2s; }
+.contact-row .name { font-size: 14.5px; font-weight: 500; }
+.contact-row .sent { font-size: 12.5px; font-weight: 600; }
+
+.circles { display: grid; grid-template-columns: repeat(5, 50px); gap: 10px 13px; justify-content: center; padding-top: 4px; touch-action: none; }
+.circle {
+  width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; transition: transform .15s; position: relative;
+}
+.circle.lift { transform: scale(1.08); }
+.circle.dragging { opacity: .6; }
+.circle.add { color: var(--faint); border: 1.5px dashed var(--star-off); font-size: 18px; }
+.circle.anyone { background: linear-gradient(135deg, var(--anyone-1), var(--anyone-2), var(--anyone-3)); font-size: 20px; }
+.circle.anyone svg.ring { position: absolute; inset: 0; width: 50px; height: 50px; transform: rotate(-90deg); }
+.circles-caption { height: 18px; font-size: 12.5px; font-weight: 600; text-align: center; }
+
+.invite { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--field); width: 100%; text-align: left; transition: background .15s; }
+.invite:hover { background: color-mix(in srgb, var(--link) 6%, var(--field)); }
+.invite .badge { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--link); background: color-mix(in srgb, var(--link) 14%, transparent); flex: none; }
+.invite .code { font-size: 13px; font-weight: 500; }
+.invite .action { display: flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 500; color: var(--link); }
+.invite .action .label { display: none; }
+.invite:hover .action .label, .invite .action.copied .label { display: inline; }
+
+.swatches { display: grid; grid-template-columns: repeat(6, var(--cell)); gap: 6px 10px; margin-left: -3px; }
+.swatch { width: var(--cell); height: var(--cell); border-radius: 50%; padding: 3px; display: flex; }
+.swatch span { flex: 1; border-radius: 50%; }
+.swatch.on { box-shadow: inset 0 0 0 2px var(--ring); }
+
+/* ---- settings ---- */
+.tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--well); }
+.tabs button { flex: 1; height: 30px; border-radius: 8px; font-size: 13px; }
+.tabs button.on { background: var(--raised); font-weight: 600; box-shadow: 0 1px 1.5px color-mix(in srgb, var(--ink) 20%, transparent); }
+.play { height: 36px; border-radius: 9px; background: var(--heart-soft); color: var(--heart-deep); font-size: 13.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; }
+
+/* ---- book ---- */
+.book { display: flex; height: 100vh; }
+.book .side { width: 260px; flex: none; display: flex; flex-direction: column; gap: 4px; padding-top: 10px; border-right: 1px solid var(--hairline); }
+.book .list { flex: 1; overflow-y: auto; padding: 4px 8px; }
+.book .detail { flex: 1; min-width: 0; overflow-y: auto; }
+.book-heading { padding: 2px 6px 2px; }
+.book-heading.others { padding-top: 12px; }
+.book-row { display: flex; align-items: center; gap: 10px; padding: 3px 6px; height: 32px; border-radius: 7px; width: 100%; text-align: left; font-size: 13.5px; touch-action: none; position: relative; }
+.book-row:hover { background: var(--field); }
+.book-row.on { background: color-mix(in srgb, var(--heart) 22%, transparent); }
+.book-row.dragging { opacity: .4; }
+.drop-before::before, .drop-after::after { content: ""; position: absolute; left: 6px; right: 6px; height: 2px; border-radius: 1px; background: var(--heart); }
+.drop-before::before { top: -1px; }
+.drop-after::after { bottom: -1px; }
+.book-heading.drop-target { background: color-mix(in srgb, var(--heart) 10%, transparent); border-radius: 7px; }
+.ghost { position: fixed; pointer-events: none; z-index: 10; padding: 4px 10px; border-radius: 7px; background: var(--raised); box-shadow: 0 3px 10px rgba(0,0,0,.2); font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+.name-input { font: inherit; font-size: 22px; font-weight: 700; border: 0; outline: none; background: none; color: var(--ink); padding: 0; width: 100%; }
