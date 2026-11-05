@@ -48,6 +48,9 @@ No Windows machine needed: `./build.sh` cross-builds in Docker
 with `latest.json` for the updater; lovearound.me/download/LoveAroundSetup.exe
 and /download/windows/latest.json redirect to the latest release. The version
 is `0.2.<commit count of this repository>` (0.1.x came from the old shared one).
+Normally a release is **Actions → Release → Run workflow** (or
+`gh workflow run release -R lovearound-me/windows`): the same two scripts on
+a GitHub runner, with the updater key in the secret `TAURI_SIGNING_PRIVATE_KEY`.
 
 The installer has no Authenticode signature, so SmartScreen warns on the first
 run ("Подробнее" → "Выполнить в любом случае"); the site's FAQ says so. It

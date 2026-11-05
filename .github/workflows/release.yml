@@ -1,0 +1,37 @@
+# Release: cross-build dist/LoveAroundSetup.exe in Docker (build.sh) and
+# publish it with latest.json as the GitHub release v<version> (publish.sh).
+# Started by hand from the Actions tab ("Run workflow") or
+# `gh workflow run release -R lovearound-me/windows`; the version is
+# 0.2.<commit count>, so release after the commits are in.
+#
+# Secret TAURI_SIGNING_PRIVATE_KEY: the updater's minisign key
+# (tauri_updater.key); the installed apps only take updates signed with it.
+name: Release
+on: workflow_dispatch
+permissions:
+  contents: write
+concurrency: release
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the version is the commit count
+      - name: Check
+        run: python3 i18n/check.py
+      - name: Updater key
+        run: |
+          [ -n "$KEY" ] || { echo "::error::secret TAURI_SIGNING_PRIVATE_KEY is not set"; exit 1; }
+          printf '%s' "$KEY" > "$RUNNER_TEMP/tauri_updater.key"
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      - name: Build
+        run: ./build.sh
+        env:
+          TAURI_KEY: ${{ runner.temp }}/tauri_updater.key
+      - name: Publish
+        run: ./publish.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
