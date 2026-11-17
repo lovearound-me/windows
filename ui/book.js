@@ -3,7 +3,7 @@
 import {
   html, render, useState, useEffect, useRef, invoke, useModel, useDark, quietBrowser, tr,
   Icon, Avatar, Caption, Note, SearchField, LinkRow, SwatchPicker, ContactForm, ContactLinkRow,
-  closeContacts, contactsByName, colorFor, palette, contains, peopleCount, startDrag,
+  closeContacts, closeFull, contactsByName, colorFor, palette, contains, peopleCount, startDrag,
 } from './lib.js';
 
 function Book() {
@@ -71,6 +71,7 @@ function Book() {
 /// an index among the close ones, or null for "Остальные".
 function People({ model, query, selected, onSelect }) {
   const [drag, setDrag] = useState(null); // { id, label, x, y, drop: { closeAt } | null, mark }
+  const [refused, setRefused] = useState(false); // a drag into a full "Рядом", said under it
   const list = useRef();
   const close = closeContacts(model);
   const others = contactsByName(model).filter((c) => !c.close);
@@ -112,13 +113,17 @@ function People({ model, query, selected, onSelect }) {
   };
 
   const startRow = (contact) => (event) => startDrag(event, {
-    onStart: (e) => setDrag({ id: contact.id, label: contact.label, x: e.clientX, y: e.clientY, drop: null }),
+    onStart: (e) => {
+      setRefused(false);
+      setDrag({ id: contact.id, label: contact.label, x: e.clientX, y: e.clientY, drop: null });
+    },
     onMove: (e) => setDrag((d) => d && { ...d, x: e.clientX, y: e.clientY, drop: target(e.clientX, e.clientY, contact.id) }),
     onEnd: (e) => {
       const drop = target(e.clientX, e.clientY, contact.id);
       setDrag(null);
       if (!drop) return;
       if (drop.closeAt == null && !contact.close) return;
+      if (drop.closeAt != null && !contact.close && closeFull(model)) return setRefused(true);
       invoke('place', { id: contact.id, closeAt: drop.closeAt });
     },
   });
@@ -136,6 +141,7 @@ function People({ model, query, selected, onSelect }) {
     </div>
     ${close.map(row)}
     ${close.length === 0 && html`<div class="note" style="padding: 4px 6px 8px">${tr('Перетащи сюда тех, кому хочешь нажимать в один клик')}</div>`}
+    ${refused && html`<div class="small danger" role="alert" style="padding: 4px 6px 8px">${tr("Рядом уже 12 человек: сначала убери кого-нибудь.")}</div>`}
     <div class=${'book-heading others' + (mark?.heading === 'others' ? ' drop-target' : '')} data-heading="others"><${Caption}>${tr('Остальные')}<//></div>
     ${others.map(row)}
     ${others.length === 0 && model.contacts.length > 0 && html`<div class="note" style="padding: 4px 6px 8px">${tr('Перетащи сюда, чтобы убрать кружок из меню')}</div>`}

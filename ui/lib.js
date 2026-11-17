@@ -179,8 +179,12 @@ export function freeColor(m) {
   return from[Math.floor(Math.random() * from.length)];
 }
 
-/// New contacts start among the close ones until there are a couple of rows of them.
-export const newContactIsClose = (m) => closeContacts(m).length < 10;
+/// "Рядом" holds 12 at most: the server refuses a 13th.
+export const MAX_CLOSE = 12;
+export const closeFull = (m) => closeContacts(m).length >= MAX_CLOSE;
+
+/// New contacts start among the close ones while there is room.
+export const newContactIsClose = (m) => !closeFull(m);
 
 /// Whole minutes until the next signal to anyone, or null if it can go now.
 export function anyoneWait(m, now = Date.now()) {

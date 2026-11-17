@@ -44,6 +44,8 @@ fn palette_at(index: i64) -> u32 {
 
 /// The sender of a signal to anyone sees stars in this color.
 const STAR_COLOR: u32 = 0xF2C46B;
+/// "Рядом" holds 12 at most: the server refuses a 13th.
+const MAX_CLOSE: usize = 12;
 
 pub struct State {
     pub signed_in: bool,
@@ -568,9 +570,11 @@ impl Model {
         let id = id.to_string();
         tauri::async_runtime::spawn(async move {
             let guard = model.saving.lock().await;
-            if model.api.update_contact(&id, None, None, Some(close), None).await.is_err() {
+            if let Err(err) = model.api.update_contact(&id, None, None, Some(close), None).await {
                 drop(guard);
-                model.update(|s| s.problem = Some(tr!("Не получилось сохранить")));
+                let full = matches!(&err, Error::Status(409, text) if text == "too many close");
+                let problem = if full { err.message() } else { tr!("Не получилось сохранить") };
+                model.update(|s| s.problem = Some(problem));
                 model.reload().await;
             }
         });
@@ -613,6 +617,10 @@ impl Model {
             return;
         };
         if !contact.is_close() {
+            // "Рядом" is full: the book says so and asks for nothing.
+            if self.read(|s| s.close_contacts().len()) >= MAX_CLOSE {
+                return;
+            }
             self.set_close(id, true);
         }
         let (mut close, person) = self.read(|s| {
