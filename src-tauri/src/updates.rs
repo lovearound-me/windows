@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use tauri::AppHandle;
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+use tauri::{AppHandle, Runtime};
+use tauri_plugin_dialog::{DialogExt, MessageDialogBuilder, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
 
 use crate::ui;
@@ -44,37 +44,50 @@ pub fn check_now(app: &AppHandle) {
         let dialog = app.dialog();
         match found {
             Ok(Some(update)) => {
-                let yes = dialog
-                    .message(tr!("Вышла версия {new}, у тебя {current}. Установить сейчас?", new = update.version, current = update.current_version))
-                    .title(tr!("Есть обновление"))
-                    .buttons(MessageDialogButtons::OkCancelCustom(tr!("Установить"), tr!("Позже")))
-                    .blocking_show();
+                let yes = wait(
+                    dialog
+                        .message(tr!("Вышла версия {new}, у тебя {current}. Установить сейчас?", new = update.version, current = update.current_version))
+                        .title(tr!("Есть обновление"))
+                        .buttons(MessageDialogButtons::OkCancelCustom(tr!("Установить"), tr!("Позже"))),
+                )
+                .await;
                 if yes {
                     match update.download_and_install(|_, _| {}, || {}).await {
                         Ok(()) => app.restart(),
                         Err(_) => {
-                            dialog
-                                .message(tr!("Не получилось скачать обновление. Попробуй позже или скачай с lovearound.me."))
-                                .kind(MessageDialogKind::Error)
-                                .title("Love Around")
-                                .blocking_show();
+                            wait(
+                                dialog
+                                    .message(tr!("Не получилось скачать обновление. Попробуй позже или скачай с lovearound.me."))
+                                    .kind(MessageDialogKind::Error)
+                                    .title("Love Around"),
+                            )
+                            .await;
                         }
                     }
                 }
             }
             Ok(None) => {
-                dialog
-                    .message(tr!("У тебя последняя версия, {version}.", version = app.package_info().version))
-                    .title("Love Around")
-                    .blocking_show();
+                wait(dialog.message(tr!("У тебя последняя версия, {version}.", version = app.package_info().version)).title("Love Around")).await;
             }
             Err(_) => {
-                dialog
-                    .message(tr!("Не получилось проверить обновления. Проверь интернет и попробуй ещё раз."))
-                    .kind(MessageDialogKind::Error)
-                    .title("Love Around")
-                    .blocking_show();
+                wait(
+                    dialog
+                        .message(tr!("Не получилось проверить обновления. Проверь интернет и попробуй ещё раз."))
+                        .kind(MessageDialogKind::Error)
+                        .title("Love Around"),
+                )
+                .await;
             }
         }
     });
+}
+
+/// A dialog awaited without holding up one of the few async workers while it
+/// is open, as `blocking_show` would. True for "Установить" (or OK).
+async fn wait<R: Runtime>(dialog: MessageDialogBuilder<R>) -> bool {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    dialog.show(move |yes| {
+        let _ = tx.send(yes);
+    });
+    rx.await.unwrap_or(false)
 }

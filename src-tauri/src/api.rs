@@ -17,6 +17,9 @@ pub struct Contact {
     /// Optional: a server older than the field leaves it out.
     #[serde(default)]
     pub close: Option<bool>,
+    /// The link they were added by, to pass on; none for older entries.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub invite_url: Option<String>,
 }
 
 impl Contact {

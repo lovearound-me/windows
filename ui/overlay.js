@@ -18,22 +18,25 @@ const STARS = ['⭐️', '🌟', '✨', '💫'];
 const random = (a, b) => a + Math.random() * (b - a);
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
-let running = [];
+let glowing = null;
 
+/// When the window hides: everything stops and goes.
 function clear() {
-  for (const animation of running) animation.cancel();
-  running = [];
+  for (const animation of document.getAnimations()) animation.cancel();
+  glowing = null;
   for (const node of document.querySelectorAll('.emoji')) node.remove();
   glow.style.opacity = 0;
 }
 
+/// A new signal flashes the glow again in its color; the emoji of the one
+/// before keep flying, and the new ones join them, as on the Mac.
 function play({ color, emoji, count, calm, sound }) {
-  clear();
+  glowing?.cancel();
   glow.style.boxShadow = `inset 0 0 44px 12px ${color}e6`;
   const flash = calm
     ? { opacity: [0, 0.7, 0.7, 0], offset: [0, 0.3, 0.7, 1] }
     : { opacity: [0, 1, 0.25, 1, 0.25, 1, 0], offset: [0, 0.12, 0.28, 0.45, 0.61, 0.78, 1] };
-  running.push(glow.animate(flash, { duration: 2600, easing: 'ease-in-out', fill: 'forwards' }));
+  glowing = glow.animate(flash, { duration: 2600, easing: 'ease-in-out', fill: 'forwards' });
 
   // "Без мигания и полёта": the glow alone.
   if (!calm) {
@@ -75,7 +78,6 @@ function fly(symbol) {
     fill: 'both',
   });
   animation.onfinish = () => node.remove();
-  running.push(animation);
 }
 
 let audio;

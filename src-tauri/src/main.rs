@@ -200,11 +200,27 @@ async fn forget_created_device(model: M<'_>) -> Answer {
 
 #[tauri::command]
 async fn remove_device(model: M<'_>, id: String) -> Answer {
-    model.api.delete_device(&id).await.map_err(|e| e.message())
+    match model.api.delete_device(&id).await {
+        // Already unplugged, from another device or by a click before.
+        Ok(()) | Err(Error::Status(404, _)) => Ok(()),
+        Err(e) => Err(e.message()),
+    }
 }
 
+/// `secret`: a device token. It stays out of the clipboard history (Win+V),
+/// the cloud clipboard that syncs to the user's other PCs, and clipboard
+/// managers, as the Mac marks it concealed.
 #[tauri::command]
-async fn copy(app: AppHandle, text: String) -> Answer {
+async fn copy(app: AppHandle, text: String, secret: Option<bool>) -> Answer {
+    #[cfg(windows)]
+    if secret == Some(true) {
+        use arboard::SetExtWindows;
+        return arboard::Clipboard::new()
+            .and_then(|mut clipboard| clipboard.set().exclude_from_monitoring().text(text))
+            .map_err(|e| e.to_string());
+    }
+    #[cfg(not(windows))]
+    let _ = secret;
     app.clipboard().write_text(text).map_err(|e| e.to_string())
 }
 

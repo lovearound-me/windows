@@ -8,7 +8,7 @@ pub const DEFAULT_EMOJI_COUNT: i64 = 40;
 
 /// Everything kept on this PC only: the server knows contacts and labels,
 /// never colors, a pause or how a signal looks.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub my_color: i64,

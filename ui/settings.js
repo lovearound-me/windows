@@ -158,6 +158,8 @@ function Devices({ model }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [removing, setRemoving] = useState(null);
+  /// The device being unplugged: a second click on "Отключить" waits for the first.
+  const unplugging = useRef(null);
   const [copied, setCopied] = useState(false);
 
   const load = () => invoke('devices').then((list) => { setDevices(list); setFailed(false); }, () => setFailed(true));
@@ -179,20 +181,22 @@ function Devices({ model }) {
   };
 
   const remove = async (id) => {
+    if (unplugging.current) return;
+    unplugging.current = id;
     try {
       await invoke('remove_device', { id });
-      setRemoving(null);
       load();
     } catch {
-      setRemoving(null);
       setError(tr('Не получилось отключить, попробуй ещё раз'));
     }
+    unplugging.current = null;
+    setRemoving(null);
   };
 
   const created = model.createdDevice;
   if (created) {
     const copy = () => {
-      invoke('copy', { text: created.token });
+      invoke('copy', { text: created.token, secret: true });
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     };

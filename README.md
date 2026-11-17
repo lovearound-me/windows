@@ -21,9 +21,10 @@ As the [Mac app](https://github.com/lovearound-me/mac#readme) does, with Windows
 - "Запускать при входе в Windows": the Run key in HKCU (autostart plugin);
   on by default after the first launch.
 - Updates: hourly, `lovearound.me/download/windows/latest.json`, signed with
-  the minisign key in `~/.config/lovearound/tauri_updater.key` (public half
-  in `tauri.conf.json`). Installed once nothing of the app is open. Without
-  that key no update reaches the installed apps: keep a copy elsewhere.
+  a minisign key (public half in `tauri.conf.json`). Installed once nothing
+  of the app is open. The private key is only in the GitHub secret
+  `TAURI_SIGNING_PRIVATE_KEY` and in the owner's password manager, never in
+  a file on a dev machine. Without it no update reaches the installed apps.
 
 ## Layout
 
@@ -44,6 +45,8 @@ As the [Mac app](https://github.com/lovearound-me/mac#readme) does, with Windows
 No Windows machine needed: `./build.sh` cross-builds in Docker
 (`Dockerfile.build`: cargo-xwin with the MSVC target, NSIS) and leaves
 `dist/LoveAroundSetup.exe`, its updater `.sig` and `LoveAround.version`.
+Without `TAURI_SIGNING_PRIVATE_KEY` in the environment it is a test build:
+no `.sig`, so it installs by hand but can't be published.
 `./publish.sh` makes them the GitHub release `v<version>` of this repository,
 with `latest.json` for the updater; lovearound.me/download/LoveAroundSetup.exe
 and /download/windows/latest.json redirect to the latest release. The version

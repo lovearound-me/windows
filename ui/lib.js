@@ -206,7 +206,9 @@ export function inviteId(text) {
     const at = rest.lastIndexOf(marker);
     if (at >= 0) rest = rest.slice(at + marker.length);
   }
-  rest = rest.split(/[/?#]/)[0];
+  // The link ends at a space, a new line or a dot after it in a message:
+  // "…/i/GSSV7-A33HN.", "…/i/GSSV7-A33HN, жду!".
+  rest = rest.split(/[/?#\s]/)[0].replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
   const code = rest.toUpperCase().replaceAll('-', '');
   return code.length === 10 && /^[23456789ABCDEFGHJKMNPQRSTVWXYZ]+$/.test(code) ? rest : null;
 }
@@ -307,19 +309,29 @@ const shownLink = (link) => link.replace('https://', '').replace('http://', '');
 
 /// The own link as one quiet card: the link itself, copied on a click.
 export function InviteRow({ model }) {
-  const [copied, setCopied] = useState(false);
   if (!model.inviteUrl) return null;
+  return html`<${LinkCard} url=${model.inviteUrl} caption=${tr('Твой Love ID')} aria=${tr('Скопировать свой Love ID')}
+    title=${tr('Кто добавит тебя по этой ссылке, сможет нажимать, когда думает о тебе')} />`;
+}
+
+/// Someone's link from the book, to pass on: the one it was added by.
+export function ContactLinkRow({ contact, name }) {
+  if (!contact.inviteUrl) return null;
+  return html`<${LinkCard} url=${contact.inviteUrl} caption=${tr('Love ID: {name}', { name })} aria=${tr('Скопировать ссылку')} />`;
+}
+
+function LinkCard({ url, caption, aria, title }) {
+  const [copied, setCopied] = useState(false);
   const copy = () => {
-    invoke('copy', { text: model.inviteUrl });
+    invoke('copy', { text: url });
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
-  return html`<button class="invite" onClick=${copy} aria-label=${tr('Скопировать свой Love ID')}
-      title=${tr('Кто добавит тебя по этой ссылке, сможет нажимать, когда думает о тебе')}>
+  return html`<button class="invite" onClick=${copy} aria-label=${aria} title=${title}>
     <span class="badge"><${Icon} name="heart" /></span>
-    <span class="col grow">
-      <span class="muted" style="font-size: 11px">${tr('Твой Love ID')}</span>
-      <span class="code ellipsis">${shownLink(model.inviteUrl)}</span>
+    <span class="col grow" style="min-width: 0">
+      <span class="muted ellipsis" style="font-size: 11px">${caption}</span>
+      <span class="code ellipsis">${shownLink(url)}</span>
     </span>
     <span class=${'action' + (copied ? ' copied' : '')}>
       <${Icon} name=${copied ? 'check' : 'copy'} /><span class="label">${copied ? tr('Скопировано') : tr('Скопировать')}</span>

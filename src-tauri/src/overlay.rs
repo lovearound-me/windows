@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
@@ -32,6 +32,8 @@ struct Play {
 static MONITORS: Mutex<Vec<(i32, i32, u32, u32)>> = Mutex::new(Vec::new());
 /// Each play hides the windows after it; a newer play cancels that.
 static GENERATION: AtomicU64 = AtomicU64::new(0);
+/// When the last emoji still flying is gone.
+static HIDE_AT: Mutex<Option<Instant>> = Mutex::new(None);
 
 fn monitors(app: &AppHandle) -> Vec<(i32, i32, u32, u32)> {
     app.available_monitors()
@@ -103,10 +105,18 @@ pub fn play(app: &AppHandle, color: u32, emoji: Emoji, count: i64, calm: bool, s
         let _ = window.emit_to(window.label(), "play", play);
     }
     // The glow takes 2.6 s; emoji start within 1.3 s and rise for up to 4.6 s.
-    let longest = if calm || count == 0 { 2.9 } else { 6.2 };
+    // The emoji of a signal before keep flying, so the windows stay until
+    // the last of all is gone, not only this one's.
+    let longest = Duration::from_secs_f64(if calm || count == 0 { 2.9 } else { 6.2 });
+    let hide_at = {
+        let mut until = HIDE_AT.lock().unwrap();
+        let at = until.map_or(Instant::now() + longest, |at| at.max(Instant::now() + longest));
+        *until = Some(at);
+        at
+    };
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        tokio::time::sleep(Duration::from_secs_f64(longest)).await;
+        tokio::time::sleep_until(hide_at.into()).await;
         if GENERATION.load(Ordering::SeqCst) == generation {
             for window in overlays(&app) {
                 let _ = window.emit_to(window.label(), "clear", ());

@@ -49,6 +49,9 @@ impl Error {
                 (400, "that is your own invite") => tr!("Это твоя собственная ссылка"),
                 (400, "not an invite code") => tr!("Не похоже на ссылку-приглашение"),
                 (400, "too many contacts") => tr!("В списке уже 200 человек"),
+                // Refused even with a token Firebase has just renewed: the
+                // fault is on the server's side, and signing out would not mend it.
+                (401, _) => tr!("Сервер не принял вход, попробуй чуть позже"),
                 (404, _) => tr!("Не нашли"),
                 (409, _) => tr!("Уже есть в списке"),
                 (429, _) => tr!("Слишком много попыток, попробуй через час"),

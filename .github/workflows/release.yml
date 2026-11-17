@@ -4,8 +4,9 @@
 # `gh workflow run release -R lovearound-me/windows`; the version is
 # 0.2.<commit count>, so release after the commits are in.
 #
-# Secret TAURI_SIGNING_PRIVATE_KEY: the updater's minisign key
-# (tauri_updater.key); the installed apps only take updates signed with it.
+# Secret TAURI_SIGNING_PRIVATE_KEY: the updater's minisign key, whose only
+# other copy is in the owner's password manager; the installed apps only
+# take updates signed with it.
 name: Release
 on: workflow_dispatch
 permissions:
@@ -21,16 +22,13 @@ jobs:
           fetch-depth: 0 # the version is the commit count
       - name: Check
         run: python3 i18n/check.py
-      - name: Updater key
-        run: |
-          [ -n "$KEY" ] || { echo "::error::secret TAURI_SIGNING_PRIVATE_KEY is not set"; exit 1; }
-          printf '%s' "$KEY" > "$RUNNER_TEMP/tauri_updater.key"
-        env:
-          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      # The key stays in the environment of this one step, never in a file.
       - name: Build
-        run: ./build.sh
+        run: |
+          [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] || { echo "::error::secret TAURI_SIGNING_PRIVATE_KEY is not set"; exit 1; }
+          ./build.sh
         env:
-          TAURI_KEY: ${{ runner.temp }}/tauri_updater.key
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       - name: Publish
         run: ./publish.sh
         env:

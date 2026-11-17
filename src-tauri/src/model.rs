@@ -137,11 +137,13 @@ struct Snapshot<'a> {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct SnapshotContact<'a> {
     id: &'a str,
     label: &'a str,
     position: i64,
     close: bool,
+    invite_url: &'a Option<String>,
 }
 
 pub fn now_ms() -> i64 {
@@ -274,12 +276,16 @@ impl Model {
         f(&self.state.lock().unwrap())
     }
 
-    /// Changes the state, saves the settings and shows the change everywhere.
+    /// Changes the state, saves the settings if they changed and shows the
+    /// change everywhere.
     pub fn update<R>(&self, f: impl FnOnce(&mut State) -> R) -> R {
         let (result, snapshot) = {
             let mut state = self.state.lock().unwrap();
+            let before = state.settings.clone();
             let result = f(&mut state);
-            state.settings.save(&self.settings_file);
+            if state.settings != before {
+                state.settings.save(&self.settings_file);
+            }
             (result, (self.snapshot_of(&state), tray::Look::of(&state)))
         };
         // Outside the lock: the tray waits for the main thread, which may be waiting for the lock.
@@ -300,7 +306,7 @@ impl Model {
             contacts: s
                 .contacts
                 .iter()
-                .map(|c| SnapshotContact { id: &c.id, label: &c.label, position: c.position, close: c.is_close() })
+                .map(|c| SnapshotContact { id: &c.id, label: &c.label, position: c.position, close: c.is_close(), invite_url: &c.invite_url })
                 .collect(),
             route: &s.route,
             sent: &s.sent,
@@ -411,10 +417,21 @@ impl Model {
                     model.sign_out();
                     model.update(|s| s.problem = Some(tr!("Нужно войти заново")));
                 }
-                Err(_) => model.update(|s| {
+                Err(Error::Network) => model.update(|s| {
                     s.sent = None;
                     s.problem = Some(tr!("Не улетело, проверь интернет"));
                 }),
+                // The server's own reason: a login it refused, or a person
+                // removed from the book on another device (then gone here too).
+                Err(e) => {
+                    if e.status() == 404 {
+                        model.reload().await;
+                    }
+                    model.update(|s| {
+                        s.sent = None;
+                        s.problem = Some(e.message());
+                    });
+                }
             }
         });
     }
@@ -456,7 +473,8 @@ impl Model {
                     s.settings.anyone_sent_at = Some(now_ms() - 120_000);
                     s.problem = None;
                 }),
-                Err(_) => model.update(|s| s.problem = Some(tr!("Не улетело, проверь интернет"))),
+                Err(Error::Network) => model.update(|s| s.problem = Some(tr!("Не улетело, проверь интернет"))),
+                Err(e) => model.update(|s| s.problem = Some(e.message())),
             }
         });
     }
@@ -756,9 +774,13 @@ impl Model {
 
     pub async fn delete_account(&self) -> Result<()> {
         self.api.delete_me().await?;
+        // Nothing of the old account carries over to the next one on this PC:
+        // not its colors, not a pause, not the hour of "Кому-нибудь".
         self.update(|s| {
             s.settings.contact_colors.clear();
             s.settings.last_sent.clear();
+            s.settings.paused_until = None;
+            s.settings.anyone_sent_at = None;
         });
         self.sign_out();
         Ok(())
@@ -802,7 +824,10 @@ pub fn invite_id(text: &str) -> Option<String> {
             text = text[at + marker.len()..].to_string();
         }
     }
-    let text = text.split(['/', '?', '#']).next().unwrap_or("").to_string();
+    // The link ends at a space, a new line or a dot after it in a message:
+    // "…/i/GSSV7-A33HN.", "…/i/GSSV7-A33HN\nДобавь меня…".
+    let text = text.split(|c: char| matches!(c, '/' | '?' | '#') || c.is_whitespace()).next().unwrap_or("");
+    let text = text.trim_matches(|c: char| !c.is_alphanumeric()).to_string();
     // 10 characters of the server's alphabet, dashes anywhere (`GSSV7-A33HN`).
     // The server never says whether a code is taken, so this is the only
     // check a typo gets: no 0, 1, I, L, O or U.
@@ -821,6 +846,10 @@ mod tests {
         assert_eq!(invite_id("lovearound://add/GSSV7-A33HN").as_deref(), Some("GSSV7-A33HN"));
         assert_eq!(invite_id("needed://add/gssv7a33hn").as_deref(), Some("gssv7a33hn"));
         assert_eq!(invite_id(" lovearound.me/i/GSSV7A33HN?x=1 ").as_deref(), Some("GSSV7A33HN"));
+        assert_eq!(invite_id("Вот: https://lovearound.me/i/GSSV7-A33HN.").as_deref(), Some("GSSV7-A33HN"));
+        assert_eq!(invite_id("lovearound.me/i/GSSV7-A33HN, жду!").as_deref(), Some("GSSV7-A33HN"));
+        assert_eq!(invite_id("https://lovearound.me/i/GSSV7-A33HN\nДобавь меня").as_deref(), Some("GSSV7-A33HN"));
+        assert_eq!(invite_id("«GSSV7-A33HN»").as_deref(), Some("GSSV7-A33HN"));
         assert_eq!(invite_id("K7Q0M-9XWPA"), None);
         assert_eq!(invite_id("hello"), None);
     }

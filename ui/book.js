@@ -2,7 +2,7 @@
 // menu, in their order) and "Остальные"; the chosen one on the right.
 import {
   html, render, useState, useEffect, useRef, invoke, useModel, useDark, quietBrowser, tr,
-  Icon, Avatar, Caption, Note, SearchField, LinkRow, SwatchPicker, ContactForm,
+  Icon, Avatar, Caption, Note, SearchField, LinkRow, SwatchPicker, ContactForm, ContactLinkRow,
   closeContacts, contactsByName, colorFor, colorIndex, palette, contains, peopleCount, startDrag,
 } from './lib.js';
 
@@ -219,6 +219,11 @@ function PersonPage({ model, contact }) {
     </div>
 
     <${Note}>${tr('{name} не увидит ни имя, ни цвет: их видишь только ты.', { name: who })}<//>
+
+    ${contact.inviteUrl && html`<div class="col" style="gap: 8px">
+      <${ContactLinkRow} contact=${contact} name=${name.trim() || contact.label} />
+      <${Note}>${tr('Ссылкой делись с теми, кого знает {name}.', { name: name.trim() || contact.label })}<//>
+    </div>`}
 
     <div class="row" style="gap: 10px; min-height: 28px">
       ${confirm

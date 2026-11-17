@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 use crate::config;
 use crate::error::{Error, Result};
-use crate::signin_box::{Sealed, SignInKey};
+use crate::signin_box::SignInKey;
 
 /// A signed-in Firebase account. Only the refresh token is kept; ID tokens
 /// live in memory.
@@ -92,15 +92,18 @@ impl Auth {
         };
         let expires_in = json["expires_in"].as_str().and_then(|s| s.parse().ok()).unwrap_or(3600);
         let mut inner = self.inner.lock().unwrap();
+        // Signed out, or into another account, while the call was out: this
+        // token belongs to a session that is no longer here. Not SignedOut,
+        // which would sign the new account out; the caller just tries again.
+        let Some(session) = inner.session.as_mut().filter(|s| s.refresh_token == refresh_token) else {
+            return Err(Error::Network);
+        };
+        let changed = session.refresh_token != new_refresh;
+        if changed {
+            session.refresh_token = new_refresh.to_string();
+        }
         inner.id_token = Some(id.to_string());
         inner.expires_at = Instant::now() + Duration::from_secs(expires_in);
-        let changed = match inner.session.as_mut() {
-            Some(session) if session.refresh_token != new_refresh => {
-                session.refresh_token = new_refresh.to_string();
-                true
-            }
-            _ => false,
-        };
         if changed {
             self.save(&inner);
         }
@@ -162,9 +165,9 @@ impl Auth {
     }
 
     /// lovearound://signin?state=…&epk=…&box=…, the box holding uid, email and
-    /// the refresh token. The site before the box sent them in the clear
-    /// (needed://signin?state=…&uid=…&email=…&rt=…); that is still accepted
-    /// until the site with the box is published.
+    /// the refresh token. A link without the box is refused: the site has
+    /// sealed it since 2026-11, and a session in the clear could have been
+    /// read by anything that saw the link.
     pub async fn complete_google(&self, url: &url::Url) -> Result<()> {
         let q: std::collections::HashMap<String, String> = url.query_pairs().into_owned().collect();
         let sealed = {
@@ -174,17 +177,9 @@ impl Auth {
             let Some(state) = inner.google_state.clone().filter(|s| q.get("state") == Some(s)) else {
                 return Err(Error::Firebase("BAD_CALLBACK".into()));
             };
-            let sealed = match q.get("box") {
-                Some(sealed) => inner
-                    .google_key
-                    .as_ref()
-                    .and_then(|key| key.open(q.get("epk").map_or("", |s| s.as_str()), sealed, &state)),
-                None => Some(Sealed {
-                    uid: q.get("uid").cloned().unwrap_or_default(),
-                    email: q.get("email").cloned().unwrap_or_default(),
-                    rt: q.get("rt").cloned().unwrap_or_default(),
-                }),
-            };
+            let sealed = q.get("box").and_then(|sealed| {
+                inner.google_key.as_ref().and_then(|key| key.open(q.get("epk").map_or("", |s| s.as_str()), sealed, &state))
+            });
             let Some(sealed) = sealed.filter(|s| !s.uid.is_empty() && !s.rt.is_empty()) else {
                 return Err(Error::Firebase("BAD_CALLBACK".into()));
             };
@@ -207,6 +202,8 @@ impl Auth {
         let mut inner = self.inner.lock().unwrap();
         inner.session = None;
         inner.id_token = None;
+        inner.google_state = None;
+        inner.google_key = None;
         let _ = std::fs::remove_file(&self.file);
     }
 
