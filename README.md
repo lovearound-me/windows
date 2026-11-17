@@ -56,6 +56,14 @@ Normally a release is **Actions → Release → Run workflow** (or
 `gh workflow run release -R lovearound-me/windows`): the same two scripts on
 a GitHub runner, with the updater key in the secret `TAURI_SIGNING_PRIVATE_KEY`.
 
+The release page says what changed: `publish.sh` lists every
+`Release-note: …` line in the messages of the commits since the last release,
+oldest first. So a commit people would notice carries one line per change,
+written for them (e.g. `Release-note: A contact's color is the same on every
+device.`), and one they wouldn't (keys, CI, refactoring) carries none; a
+squash-merged PR keeps its line when it is in the merge message. A release
+with no such line says "Small fixes under the hood." and warns in the run.
+
 The installer has no Authenticode signature, so SmartScreen warns on the first
 run ("Подробнее" → "Выполнить в любом случае"); the site's FAQ says so. It
 installs for the current user, no admin rights, and fetches WebView2 if the
