@@ -99,11 +99,9 @@ impl State {
         self.contacts.iter().filter(|c| c.is_close()).cloned().collect()
     }
 
+    /// A contact's color is kept on the contact, so every device shows the same one.
     fn color_for(&self, contact: &Contact) -> u32 {
-        match self.settings.contact_colors.get(&contact.id) {
-            Some(index) => palette_at(*index),
-            None => palette_at(self.contacts.iter().position(|c| c.id == contact.id).unwrap_or(0) as i64),
-        }
+        palette_at(contact.color.unwrap_or(0))
     }
 
     /// Whole minutes until the next signal to anyone, or None if it can go now.
@@ -532,26 +530,28 @@ impl Model {
     // ---- contacts -----------------------------------------------------------
 
     pub async fn add_contact(&self, code: &str, label: &str, color: i64, close: bool) -> Result<String> {
-        let contact = self.api.add_contact(code, label, close).await?;
+        let mut contact = self.api.add_contact(code, label, close, color).await?;
+        contact.color.get_or_insert(color);
         let id = contact.id.clone();
-        self.update(|s| {
-            s.settings.contact_colors.insert(contact.id.clone(), color);
-            s.contacts.push(contact);
-        });
+        self.update(|s| s.contacts.push(contact));
         Ok(id)
     }
 
     pub async fn update_contact(&self, id: &str, label: &str, color: i64) -> Result<()> {
         let current = self.read(|s| s.contacts.iter().find(|c| c.id == id).cloned());
         let Some(current) = current else { return Err(Error::Status(404, String::new())) };
-        if label != current.label {
+        let label_changed = label != current.label;
+        let color_changed = current.color != Some(color);
+        if label_changed || color_changed {
             let _guard = self.saving.lock().await;
-            self.api.update_contact(id, Some(label), None, None).await?;
+            self.api
+                .update_contact(id, label_changed.then_some(label), None, None, color_changed.then_some(color))
+                .await?;
         }
         self.update(|s| {
-            s.settings.contact_colors.insert(id.to_string(), color);
             if let Some(c) = s.contacts.iter_mut().find(|c| c.id == id) {
                 c.label = label.to_string();
+                c.color = Some(color);
             }
         });
         Ok(())
@@ -568,7 +568,7 @@ impl Model {
         let id = id.to_string();
         tauri::async_runtime::spawn(async move {
             let guard = model.saving.lock().await;
-            if model.api.update_contact(&id, None, None, Some(close)).await.is_err() {
+            if model.api.update_contact(&id, None, None, Some(close), None).await.is_err() {
                 drop(guard);
                 model.update(|s| s.problem = Some(tr!("Не получилось сохранить")));
                 model.reload().await;
@@ -580,7 +580,6 @@ impl Model {
         self.api.delete_contact(id).await?;
         self.update(|s| {
             s.contacts.retain(|c| c.id != id);
-            s.settings.contact_colors.remove(id);
             s.settings.last_sent.remove(id);
             if s.book_selection.as_deref() == Some(id) {
                 s.book_selection = None;
@@ -659,7 +658,7 @@ impl Model {
             updates
         });
         for (id, position) in updates {
-            if self.api.update_contact(&id, None, Some(position), None).await.is_err() {
+            if self.api.update_contact(&id, None, Some(position), None, None).await.is_err() {
                 drop(guard);
                 self.update(|s| s.problem = Some(tr!("Не получилось сохранить порядок")));
                 self.reload().await;
@@ -775,9 +774,8 @@ impl Model {
     pub async fn delete_account(&self) -> Result<()> {
         self.api.delete_me().await?;
         // Nothing of the old account carries over to the next one on this PC:
-        // not its colors, not a pause, not the hour of "Кому-нибудь".
+        // not when it last sent, not a pause, not the hour of "Кому-нибудь".
         self.update(|s| {
-            s.settings.contact_colors.clear();
             s.settings.last_sent.clear();
             s.settings.paused_until = None;
             s.settings.anyone_sent_at = None;

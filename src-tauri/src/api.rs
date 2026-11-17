@@ -20,6 +20,11 @@ pub struct Contact {
     /// The link they were added by, to pass on; none for older entries.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub invite_url: Option<String>,
+    /// The owner's color for them, an index into the palette, kept on the
+    /// server so every device shows the same one. Optional: a server older
+    /// than the field leaves it out.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<i64>,
 }
 
 impl Contact {
@@ -70,11 +75,11 @@ impl Api {
     }
 
     /// Always answers the same whether or not the code belongs to anyone.
-    pub async fn add_contact(&self, code: &str, label: &str, close: bool) -> Result<Contact> {
-        decode(self.request("POST", "v1/contacts", Some(json!({ "code": code, "label": label, "close": close }))).await?)
+    pub async fn add_contact(&self, code: &str, label: &str, close: bool, color: i64) -> Result<Contact> {
+        decode(self.request("POST", "v1/contacts", Some(json!({ "code": code, "label": label, "close": close, "color": color }))).await?)
     }
 
-    pub async fn update_contact(&self, id: &str, label: Option<&str>, position: Option<i64>, close: Option<bool>) -> Result<()> {
+    pub async fn update_contact(&self, id: &str, label: Option<&str>, position: Option<i64>, close: Option<bool>, color: Option<i64>) -> Result<()> {
         let mut body = serde_json::Map::new();
         if let Some(label) = label {
             body.insert("label".into(), json!(label));
@@ -84,6 +89,9 @@ impl Api {
         }
         if let Some(close) = close {
             body.insert("close".into(), json!(close));
+        }
+        if let Some(color) = color {
+            body.insert("color".into(), json!(color));
         }
         self.request("PATCH", &format!("v1/contacts/{id}"), Some(Value::Object(body))).await?;
         Ok(())

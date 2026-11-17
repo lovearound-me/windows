@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 /// How many emoji float up per signal unless the receiver set otherwise.
 pub const DEFAULT_EMOJI_COUNT: i64 = 40;
 
-/// Everything kept on this PC only: the server knows contacts and labels,
-/// never colors, a pause or how a signal looks.
+/// Everything kept on this PC only: the server keeps the contacts with their
+/// names and colors, never the own color, a pause or how a signal looks.
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -24,7 +24,6 @@ pub struct Settings {
     pub accept_anyone: bool,
     /// When this PC last sent a signal to anyone (ms since the epoch): one an hour.
     pub anyone_sent_at: Option<i64>,
-    pub contact_colors: HashMap<String, i64>,
     /// When each contact was last sent a signal from this PC, for "Недавние".
     pub last_sent: HashMap<String, i64>,
     /// Ms since the epoch; `FOREVER` until resumed.
@@ -55,7 +54,6 @@ impl Default for Settings {
             min_gap: 1.0,
             accept_anyone: true,
             anyone_sent_at: None,
-            contact_colors: HashMap::new(),
             last_sent: HashMap::new(),
             paused_until: None,
             login_item_set_up: false,

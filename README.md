@@ -5,8 +5,9 @@ popover, book, settings and glow, the same server and account. Tauri 2: Rust
 for everything the Mac app does in Swift, WebView2 pages for the views. The
 bundle id is `me.lovearound.windows`; links open through `lovearound://` (and the
 old `needed://`) as on the Mac. Data lives in
-`%APPDATA%\me.lovearound.windows` (`session.json`, `settings.json`): colors
-and settings stay on this PC, as on the Mac.
+`%APPDATA%\me.lovearound.windows` (`session.json`, `settings.json`): the own
+color and settings stay on this PC, as on the Mac; each contact's color is
+kept on the server with the contact, so every device shows the same one.
 
 ## What it does
 

@@ -3,7 +3,7 @@
 import {
   html, render, useState, useEffect, useRef, invoke, useModel, useDark, quietBrowser, tr,
   Icon, Avatar, Caption, Note, SearchField, LinkRow, SwatchPicker, ContactForm, ContactLinkRow,
-  closeContacts, contactsByName, colorFor, colorIndex, palette, contains, peopleCount, startDrag,
+  closeContacts, contactsByName, colorFor, palette, contains, peopleCount, startDrag,
 } from './lib.js';
 
 function Book() {
@@ -140,7 +140,7 @@ function People({ model, query, selected, onSelect }) {
     ${others.map(row)}
     ${others.length === 0 && model.contacts.length > 0 && html`<div class="note" style="padding: 4px 6px 8px">${tr('Перетащи сюда, чтобы убрать кружок из меню')}</div>`}
     ${drag && html`<div class="ghost" style=${{ left: drag.x + 12 + 'px', top: drag.y - 14 + 'px' }}>
-      <${Avatar} label=${drag.label} color=${colorFor(model, model.contacts.find((c) => c.id === drag.id) ?? { id: drag.id })} size=${20} />${drag.label}
+      <${Avatar} label=${drag.label} color=${colorFor(model.contacts.find((c) => c.id === drag.id) ?? { id: drag.id })} size=${20} />${drag.label}
     </div>`}
   </div>`;
 }
@@ -148,7 +148,7 @@ function People({ model, query, selected, onSelect }) {
 function Row({ model, contact, on, extra = '', onClick, onPointerDown }) {
   return html`<button class=${'book-row' + (on ? ' on' : '') + extra} data-row=${contact.id} data-close=${contact.close ? '1' : '0'}
       onClick=${onClick} onPointerDown=${onPointerDown}>
-    <${Avatar} label=${contact.label} color=${colorFor(model, contact)} size=${22} />
+    <${Avatar} label=${contact.label} color=${colorFor(contact)} size=${22} />
     <span class="grow ellipsis">${contact.label}</span>
   </button>`;
 }
@@ -156,12 +156,15 @@ function Row({ model, contact, on, extra = '', onClick, onPointerDown }) {
 /// The name (saved a moment after typing stops) and the color.
 function PersonPage({ model, contact }) {
   const [name, setName] = useState(contact.label);
-  const [color, setColor] = useState(() => colorIndex(model, contact));
+  const [color, setColor] = useState(contact.color ?? 0);
   const [status, setStatus] = useState(null); // 'saving' | 'saved' | error text
   const [confirm, setConfirm] = useState(false);
   const timer = useRef();
   const latest = useRef({ name, color });
   latest.current = { name, color };
+  // Repainted on another device: shown here unless a save is on its way.
+  const saved = contact.color ?? 0;
+  useEffect(() => { if (status !== 'saving') setColor(saved); }, [saved]);
 
   const save = async () => {
     clearTimeout(timer.current);

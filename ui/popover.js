@@ -105,7 +105,7 @@ function ShareButton({ model }) {
 /// A person in the book: a row with a name, a click sends.
 function ContactRow({ model, contact }) {
   const [hover, setHover] = useState(false);
-  const color = colorFor(model, contact);
+  const color = colorFor(contact);
   const sent = model.sent === contact.id;
   return html`<button class="contact-row" onClick=${() => invoke('send', { id: contact.id })}
       onMouseEnter=${() => setHover(true)} onMouseLeave=${() => setHover(false)}
@@ -152,7 +152,7 @@ function CloseCircles({ model }) {
     <div class="circles">
       <${AnyoneCircle} model=${model} now=${now} lift=${hovered === ANYONE} hover=${hover(ANYONE)} />
       ${close.map((contact) => {
-        const color = colorFor(model, contact);
+        const color = colorFor(contact);
         const sent = model.sent === contact.id;
         return html`<button key=${contact.id} data-circle=${contact.id}
             class=${'circle' + (sent || hovered === contact.id ? ' lift' : '') + (dragging === contact.id ? ' dragging' : '')}
@@ -179,7 +179,7 @@ function caption(model, close, hovered, now) {
   const focus = close.find((c) => c.id === (model.sent ?? hovered));
   if (focus) {
     const text = model.sent === focus.id ? tr('{name} — улетело ♥', { name: focus.label }) : focus.label;
-    return html`<span style=${{ color: colorFor(model, focus).deep }}>${text}</span>`;
+    return html`<span style=${{ color: colorFor(focus).deep }}>${text}</span>`;
   }
   if (close.length === 0 && model.contacts.length > 0) return html`<span class="faint">${tr('Нажми «+», чтобы добавить кружки')}</span>`;
   return ' ';
