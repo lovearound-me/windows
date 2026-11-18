@@ -2,8 +2,10 @@
 pub const API_BASE: &str = "https://api.lovearound.me";
 /// Firebase Web API key: public, identifies the project to Firebase Auth.
 pub const FIREBASE_API_KEY: &str = "AIzaSyBZJfln_KXsxRxo3fvVaV1ePmiVUIn5YXY";
-/// The site: install page, invite links /i/<code>, Google sign-in bridge /signin/.
+/// The site: install page, invite links /i/<code>, the sign-in page /signin/.
 pub const SITE: &str = "https://lovearound.me";
+/// The web app's «Способы входа»: adding Google, Apple or email to the account.
+pub const SIGN_IN_METHODS: &str = "https://app.lovearound.me/#/settings/signin";
 /// Links the app opens: lovearound://add/<code>, lovearound://signin?….
 pub const URL_SCHEME: &str = "lovearound";
 /// Plus the codename's needed://, which older builds of the site still send.

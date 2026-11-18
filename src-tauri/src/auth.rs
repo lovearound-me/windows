@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use crate::config;
 use crate::error::{Error, Result};
@@ -23,13 +23,19 @@ struct Inner {
     session: Option<Session>,
     id_token: Option<String>,
     expires_at: Instant,
-    google_state: Option<String>,
-    google_key: Option<SignInKey>,
+    pending: Option<Pending>,
 }
 
-/// Firebase Auth over its REST API: email+password directly, Google through
-/// the site's /signin/ page, which hands the session back via lovearound://signin,
-/// sealed to a one-time key of ours (signin_box.rs).
+/// A sign-in page opened in the browser and not answered yet.
+struct Pending {
+    url: String,
+    state: String,
+    key: SignInKey,
+}
+
+/// Firebase Auth over its REST API. Signing in happens in the browser, on the
+/// site's /signin/ page (Google, Apple or email), which hands the session back
+/// via lovearound://signin, sealed to a one-time key of ours (signin_box.rs).
 pub struct Auth {
     inner: Mutex<Inner>,
     /// One refresh at a time; the others wait for it and take its token.
@@ -44,7 +50,7 @@ impl Auth {
         let file = dir.join("session.json");
         let session = std::fs::read(&file).ok().and_then(|data| serde_json::from_slice(&data).ok());
         Auth {
-            inner: Mutex::new(Inner { session, id_token: None, expires_at: Instant::now(), google_state: None, google_key: None }),
+            inner: Mutex::new(Inner { session, id_token: None, expires_at: Instant::now(), pending: None }),
             refreshing: tokio::sync::Mutex::new(()),
             file,
             http,
@@ -110,57 +116,20 @@ impl Auth {
         Ok(id.to_string())
     }
 
-    // ---- email + password ---------------------------------------------------
+    // ---- sign-in, through the site -------------------------------------------
 
-    /// Signs in, or creates the account when the email is new.
-    pub async fn sign_in(&self, email: &str, password: &str) -> Result<()> {
-        match self.email_call("signInWithPassword", email, password).await {
-            Err(Error::Firebase(code)) if code.starts_with("EMAIL_NOT_FOUND") || code.starts_with("INVALID_LOGIN_CREDENTIALS") => {
-                // With email enumeration protection both cases look the same:
-                // try to create the account, and an existing email means a wrong password.
-                match self.email_call("signUp", email, password).await {
-                    Err(Error::Firebase(code)) if code.starts_with("EMAIL_EXISTS") => Err(Error::Firebase("INVALID_PASSWORD".into())),
-                    other => other,
-                }
-            }
-            other => other,
-        }
-    }
-
-    pub async fn send_password_reset(&self, email: &str) -> Result<()> {
-        self.post("accounts:sendOobCode", json!({ "requestType": "PASSWORD_RESET", "email": email })).await?;
-        Ok(())
-    }
-
-    async fn email_call(&self, method: &str, email: &str, password: &str) -> Result<()> {
-        let json = self
-            .post(&format!("accounts:{method}"), json!({ "email": email, "password": password, "returnSecureToken": true }))
-            .await?;
-        let (Some(uid), Some(id), Some(refresh_token)) =
-            (json["localId"].as_str(), json["idToken"].as_str(), json["refreshToken"].as_str())
-        else {
-            return Err(Error::Firebase("BAD_RESPONSE".into()));
-        };
-        let email = json["email"].as_str().unwrap_or(email).to_string();
-        self.adopt(Session { uid: uid.into(), email: Some(email), refresh_token: refresh_token.into() });
-        let expires_in = json["expiresIn"].as_str().and_then(|s| s.parse().ok()).unwrap_or(3600);
+    /// The page that signs in (Google, Apple or email) and returns to
+    /// lovearound://signin, with the session sealed to our one-time key.
+    /// Opening it again gives the same page, so a tab already open still works.
+    pub fn sign_in_url(&self) -> String {
         let mut inner = self.inner.lock().unwrap();
-        inner.id_token = Some(id.into());
-        inner.expires_at = Instant::now() + Duration::from_secs(expires_in);
-        Ok(())
-    }
-
-    // ---- Google, through the site -------------------------------------------
-
-    /// The page that signs in with Google and returns to lovearound://signin,
-    /// with the session sealed to our one-time key.
-    pub fn google_sign_in_url(&self) -> String {
+        if let Some(pending) = &inner.pending {
+            return pending.url.clone();
+        }
         let state = uuid::Uuid::new_v4().to_string().to_uppercase();
         let key = SignInKey::new();
         let url = format!("{}/signin?state={state}&key={}", config::SITE, key.public());
-        let mut inner = self.inner.lock().unwrap();
-        inner.google_state = Some(state);
-        inner.google_key = Some(key);
+        inner.pending = Some(Pending { url: url.clone(), state, key });
         url
     }
 
@@ -168,23 +137,20 @@ impl Auth {
     /// the refresh token. A link without the box is refused: the site has
     /// sealed it since 2026-11, and a session in the clear could have been
     /// read by anything that saw the link.
-    pub async fn complete_google(&self, url: &url::Url) -> Result<()> {
+    pub async fn complete_sign_in(&self, url: &url::Url) -> Result<()> {
         let q: std::collections::HashMap<String, String> = url.query_pairs().into_owned().collect();
         let sealed = {
             let mut inner = self.inner.lock().unwrap();
             // The state proves the callback answers our own request, so a crafted
             // link cannot sign the app into someone else's account.
-            let Some(state) = inner.google_state.clone().filter(|s| q.get("state") == Some(s)) else {
+            let Some(pending) = inner.pending.as_ref().filter(|p| q.get("state") == Some(&p.state)) else {
                 return Err(Error::Firebase("BAD_CALLBACK".into()));
             };
-            let sealed = q.get("box").and_then(|sealed| {
-                inner.google_key.as_ref().and_then(|key| key.open(q.get("epk").map_or("", |s| s.as_str()), sealed, &state))
-            });
+            let sealed = q.get("box").and_then(|sealed| pending.key.open(q.get("epk").map_or("", |s| s.as_str()), sealed, &pending.state));
             let Some(sealed) = sealed.filter(|s| !s.uid.is_empty() && !s.rt.is_empty()) else {
                 return Err(Error::Firebase("BAD_CALLBACK".into()));
             };
-            inner.google_state = None;
-            inner.google_key = None;
+            inner.pending = None;
             sealed
         };
         self.adopt(Session {
@@ -196,14 +162,25 @@ impl Auth {
         Ok(())
     }
 
+    /// How this session signed in: "google.com", "apple.com" or "password",
+    /// read from the ID token (a refreshed token keeps it). None before the
+    /// first token.
+    pub fn provider(&self) -> Option<String> {
+        use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+        use base64::Engine;
+        let token = self.inner.lock().unwrap().id_token.clone()?;
+        let payload = URL_SAFE_NO_PAD.decode(token.split('.').nth(1)?.trim_end_matches('=')).ok()?;
+        let claims: Value = serde_json::from_slice(&payload).ok()?;
+        claims["firebase"]["sign_in_provider"].as_str().map(str::to_string)
+    }
+
     // ---- session ------------------------------------------------------------
 
     pub fn sign_out(&self) {
         let mut inner = self.inner.lock().unwrap();
         inner.session = None;
         inner.id_token = None;
-        inner.google_state = None;
-        inner.google_key = None;
+        inner.pending = None;
         let _ = std::fs::remove_file(&self.file);
     }
 
@@ -223,14 +200,6 @@ impl Auth {
                 let _ = std::fs::rename(&tmp, &self.file);
             }
         }
-    }
-
-    async fn post(&self, method: &str, body: Value) -> Result<Value> {
-        let req = self
-            .http
-            .post(format!("https://identitytoolkit.googleapis.com/v1/{method}?key={}", config::FIREBASE_API_KEY))
-            .json(&body);
-        call(req).await
     }
 }
 

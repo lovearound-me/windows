@@ -62,25 +62,15 @@ async fn send_anyone(model: M<'_>) -> Answer {
 }
 
 #[tauri::command]
-async fn sign_in(model: M<'_>, email: String, password: String) -> Answer {
-    model.sign_in(email.trim(), &password).await.map_err(|e| e.message())
-}
-
-#[tauri::command]
-async fn google_sign_in(model: M<'_>) -> Answer {
-    model.sign_in_with_google();
+async fn sign_in_in_browser(model: M<'_>) -> Answer {
+    model.sign_in_in_browser();
     Ok(())
 }
 
 #[tauri::command]
-async fn cancel_google(model: M<'_>) -> Answer {
-    model.update(|s| s.waiting_for_browser = false);
+async fn open_sign_in_methods(model: M<'_>) -> Answer {
+    model.open_sign_in_methods();
     Ok(())
-}
-
-#[tauri::command]
-async fn reset_password(model: M<'_>, email: String) -> Answer {
-    model.send_password_reset(email.trim()).await.map_err(|e| e.message())
 }
 
 #[tauri::command]
@@ -321,10 +311,8 @@ fn main() {
             state,
             send,
             send_anyone,
-            sign_in,
-            google_sign_in,
-            cancel_google,
-            reset_password,
+            sign_in_in_browser,
+            open_sign_in_methods,
             sign_out,
             delete_account,
             add_contact,

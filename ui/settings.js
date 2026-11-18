@@ -255,6 +255,15 @@ function Devices({ model }) {
 
 // ---- Аккаунт ---------------------------------------------------------------------
 
+function signedInWith(provider) {
+  switch (provider) {
+    case 'apple.com': return tr('Вход через Apple');
+    case 'google.com': return tr('Вход через Google');
+    case 'password': return tr('Вход по почте');
+    default: return tr('Книга хранится в аккаунте');
+  }
+}
+
 function Account({ model }) {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -271,14 +280,17 @@ function Account({ model }) {
     }
   };
 
+  // Apple's "Hide my email" gives an address nobody would recognise.
+  const hidden = (model.email || '').endsWith('@privaterelay.appleid.com');
   return html`<div class="col" style="gap: 18px">
     <div class="row card" style="gap: 12px; padding: 12px">
-      <${Avatar} label=${model.email || '♥'} color=${palette(model.settings.myColor)} size=${38} />
-      <div class="col grow">
-        <span class="ellipsis" style="font-size: 13.5px; font-weight: 600">${model.email}</span>
-        <span class="note">${tr('Книга хранится в аккаунте')}</span>
+      <${Avatar} label=${model.email || '♥'} color=${palette(model.settings.myColor)} size=${38} icon=${hidden ? 'apple' : null} />
+      <div class="col grow" style="min-width: 0">
+        <span class="ellipsis" style="font-size: 13.5px; font-weight: 600">${hidden ? 'Apple ID' : model.email}</span>
+        <span class="note">${hidden ? tr('Почту скрыл Apple') : signedInWith(model.provider)}</span>
+        <span class="note row"><button class="link row" style="gap: 2px" onClick=${() => invoke('open_sign_in_methods')}>${tr('Способы входа')}<${Icon} name="arrowUpRight" size=${11} /></button></span>
       </div>
-      <button class="small-button" onClick=${() => invoke('sign_out')}>${tr('Выйти')}</button>
+      <button class="small-button" style="flex: none; min-width: 76px; padding: 0 12px" onClick=${() => invoke('sign_out')}>${tr('Выйти')}</button>
     </div>
 
     <div class="col" style="gap: 6px">

@@ -211,45 +211,9 @@ function AnyoneCircle({ model, now, lift, hover }) {
 // ---- sign in ---------------------------------------------------------------------
 
 function SignIn({ model }) {
-  const [withEmail, setWithEmail] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  // What went wrong, in red right under the button; and good news apart from it.
-  const [message, setMessage] = useState(null);
-  const [notice, setNotice] = useState(null);
-  const clear = () => { setMessage(null); setNotice(null); };
-
-  const submit = async () => {
-    const address = email.trim();
-    if (!address) return setMessage(tr('Введи почту'));
-    if (!address.includes('@')) return setMessage(tr('Проверь адрес почты'));
-    if (password.length < 8) return setMessage(tr('Пароль нужен не короче 8 символов'));
-    setBusy(true);
-    clear();
-    try {
-      await invoke('sign_in', { email: address, password });
-      setPassword('');
-    } catch (e) {
-      setMessage(String(e));
-    }
-    setBusy(false);
-  };
-
-  const reset = async () => {
-    const address = email.trim();
-    if (!address) return setMessage(tr('Сначала введи почту'));
-    clear();
-    try {
-      await invoke('reset_password', { email: address });
-      setNotice(tr('Письмо для нового пароля отправлено'));
-    } catch (e) {
-      setMessage(String(e));
-    }
-  };
-
-  const text = message ?? model.problem;
-  const error = text && html`<div class="error" role="alert"><${Icon} name="alert" size=${14} /><span>${text}</span></div>`;
+  // Google, Apple and email all happen on lovearound.me/signin in the browser.
+  const open = () => invoke('sign_in_in_browser');
+  const error = model.problem && html`<div class="error" role="alert"><${Icon} name="alert" size=${14} /><span>${model.problem}</span></div>`;
   return html`<div class="col" style="gap: 14px">
     <div class="col center" style="gap: 10px; padding-top: 8px; align-items: center">
       <div class="row" style="width: 56px; height: 56px; border-radius: 50%; background: var(--heart-soft); color: var(--heart); justify-content: center">
@@ -259,35 +223,28 @@ function SignIn({ model }) {
       <div class="muted">${tr('Думаешь о ком-то? Нажми, и он почувствует, что его любят и он нужен. А от кого, не узнает.')}</div>
     </div>
 
-    ${withEmail
-      ? html`<form class="col" style="gap: 10px" noValidate onSubmit=${(e) => { e.preventDefault(); submit(); }}>
-          <label class="field"><span class="caption">${tr('Почта')}</span>
-            <input type="text" inputmode="email" autocapitalize="off" spellcheck="false" autocomplete="username" placeholder="you@example.com" value=${email} onInput=${(e) => setEmail(e.target.value)} autofocus />
-          </label>
-          <label class="field"><span class="caption">${tr('Пароль')}</span>
-            <input type="password" autocomplete="current-password" placeholder=${tr('Не меньше 8 символов')} value=${password} onInput=${(e) => setPassword(e.target.value)} />
-          </label>
-          <button class="primary" type="submit" disabled=${busy}>${busy ? tr('Входим…') : tr('Войти или создать аккаунт')}</button>
-          ${error}
-          <div class="row" style="font-size: 12.5px">
-            <button type="button" class="muted" onClick=${() => { setWithEmail(false); clear(); }}>${tr('← Назад')}</button>
-            <span class="grow"></span>
-            <button type="button" class="link" onClick=${reset}>${tr('Забыли пароль?')}</button>
+    ${model.waitingForBrowser
+      ? html`<div class="col" style="gap: 8px">
+          <button class="primary" disabled>${tr('Продолжи в браузере…')}</button>
+          <div class="row center" style="gap: 5px; justify-content: center; font-size: 12.5px">
+            <span class="muted">${tr('Страница не открылась?')}</span>
+            <button class="link" onClick=${open}>${tr('Открыть ещё раз')}</button>
           </div>
-        </form>`
-      : html`<div class="col" style="gap: 8px">
-          <button class="primary" onClick=${() => { clear(); invoke('google_sign_in'); }}>
-            <${Icon} name="globe" />${model.waitingForBrowser ? tr('Продолжи в браузере…') : tr('Войти через Google')}
-          </button>
-          <button class="secondary" onClick=${() => { setWithEmail(true); clear(); }}>${tr('Войти по почте')}</button>
+          ${error}
+        </div>`
+      : html`<div class="col" style="gap: 10px">
+          <button class="primary" onClick=${open}><${Icon} name="globe" />${tr('Войти через браузер')}</button>
+          <div class="chips">
+            <span class="chip"><${Icon} name="google" />Google</span>
+            <span class="chip"><${Icon} name="apple" />Apple</span>
+            <span class="chip"><${Icon} name="mail" />${tr('Почта')}</span>
+          </div>
           ${error}
         </div>`}
 
-    ${notice && html`<div class="notice center small">${notice}</div>`}
-
     <hr />
     <div class="row muted" style="font-size: 12.5px">
-      <span class="grow">${tr('Вход через Apple появится позже')}</span>
+      <span class="grow"></span>
       <button onClick=${() => invoke('quit')}>${tr('Закрыть')}</button>
     </div>
   </div>`;

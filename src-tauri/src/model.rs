@@ -50,6 +50,8 @@ const MAX_CLOSE: usize = 12;
 pub struct State {
     pub signed_in: bool,
     pub email: Option<String>,
+    /// How the account signed in ("google.com", "apple.com", "password"), for Settings → Аккаунт.
+    pub provider: Option<String>,
     pub invite_url: Option<String>,
     pub contacts: Vec<Contact>,
     pub route: Route,
@@ -118,6 +120,7 @@ impl State {
 struct Snapshot<'a> {
     signed_in: bool,
     email: &'a Option<String>,
+    provider: &'a Option<String>,
     invite_url: &'a Option<String>,
     contacts: Vec<SnapshotContact<'a>>,
     route: &'a Route,
@@ -191,6 +194,7 @@ impl Model {
             state: Mutex::new(State {
                 signed_in: false,
                 email: None,
+                provider: None,
                 invite_url: None,
                 contacts: Vec::new(),
                 route: Route::Main,
@@ -302,6 +306,7 @@ impl Model {
         let snapshot = Snapshot {
             signed_in: s.signed_in,
             email: &s.email,
+            provider: &s.provider,
             invite_url: &s.invite_url,
             contacts: s
                 .contacts
@@ -350,9 +355,12 @@ impl Model {
 
     pub async fn reload(&self) {
         let result: Result<_> = async { Ok((self.api.me().await?, self.api.contacts().await?)) }.await;
+        // The calls above refreshed the ID token, which says how the account signed in.
+        let provider = self.auth.provider();
         match result {
             Ok((me, contacts)) => self.update(|s| {
                 let _ = me.uid;
+                s.provider = provider;
                 s.invite_url = Some(me.invite_url);
                 s.contacts = contacts;
                 s.problem = None;
@@ -715,7 +723,7 @@ impl Model {
                 }
                 let model = self.clone();
                 tauri::async_runtime::spawn(async move {
-                    match model.auth.complete_google(&url).await {
+                    match model.auth.complete_sign_in(&url).await {
                         Ok(()) => model.did_sign_in(),
                         // Unless it's a copy that lost the race to the first one.
                         Err(e) => model.update(|s| {
@@ -734,20 +742,18 @@ impl Model {
 
     // ---- account ------------------------------------------------------------
 
-    pub async fn sign_in(self: &Arc<Self>, email: &str, password: &str) -> Result<()> {
-        self.auth.sign_in(email, password).await?;
-        self.did_sign_in();
-        Ok(())
-    }
-
-    pub fn sign_in_with_google(&self) {
-        self.update(|s| s.waiting_for_browser = true);
-        let url = self.auth.google_sign_in_url();
+    /// Google, Apple and email all happen on the site's /signin/ page.
+    pub fn sign_in_in_browser(&self) {
+        self.update(|s| {
+            s.problem = None;
+            s.waiting_for_browser = true;
+        });
+        let url = self.auth.sign_in_url();
         let _ = self.app.opener().open_url(url, None::<&str>);
     }
 
-    pub async fn send_password_reset(&self, email: &str) -> Result<()> {
-        self.auth.send_password_reset(email).await
+    pub fn open_sign_in_methods(&self) {
+        let _ = self.app.opener().open_url(config::SIGN_IN_METHODS, None::<&str>);
     }
 
     fn did_sign_in(self: &Arc<Self>) {
@@ -771,6 +777,7 @@ impl Model {
             s.created_device = None;
             s.signed_in = false;
             s.email = None;
+            s.provider = None;
             s.invite_url = None;
             s.contacts.clear();
             s.route = Route::Main;

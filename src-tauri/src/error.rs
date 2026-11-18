@@ -3,7 +3,7 @@
 pub enum Error {
     /// No session, or it can no longer be refreshed.
     SignedOut,
-    /// A Firebase Auth error code, e.g. "EMAIL_EXISTS".
+    /// A Firebase Auth error code, e.g. "TOKEN_EXPIRED".
     Firebase(String),
     /// The server answered with this status and its `error` text.
     Status(u16, String),
@@ -35,10 +35,6 @@ impl Error {
             Error::Firebase(code) => {
                 let code = code.split(' ').next().unwrap_or(code);
                 match code {
-                    "INVALID_PASSWORD" => tr!("Неверный пароль. Если раньше вход был через Google, нажми «Назад» и «Войти через Google»"),
-                    "WEAK_PASSWORD" => tr!("Пароль слишком простой"),
-                    "INVALID_EMAIL" | "MISSING_EMAIL" => tr!("Проверь адрес почты"),
-                    "MISSING_PASSWORD" => tr!("Введи пароль"),
                     "TOO_MANY_ATTEMPTS_TRY_LATER" => tr!("Слишком много попыток, попробуй чуть позже"),
                     "USER_DISABLED" => tr!("Этот аккаунт отключён"),
                     "BAD_CALLBACK" => tr!("Вход не завершился, попробуй ещё раз"),
