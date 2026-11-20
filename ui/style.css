@@ -5,6 +5,7 @@
   --paper: #FFFBF6; --field: #F8EFE6; --well: #F2E6DA; --raised: #FFFBF6; --input: #FFFFFF;
   --link: #B83A4E; --heart: #E0596B; --heart-soft: #FDE3E6; --heart-deep: #8E2537;
   --ok: #39744A; --danger: #B3261E; --hairline: rgba(84, 48, 30, .22);
+  --danger-soft: #FCEAE8; --danger-line: rgba(179, 38, 30, .28);
   --switch-on: #3FA05A; --star: #D99A1E; --star-off: #B9A596;
   --anyone-1: #FBE3D2; --anyone-2: #FCE6EA; --anyone-3: #F3E4F3;
   color-scheme: light;
@@ -15,6 +16,7 @@
     --paper: #2A211D; --field: #372C27; --well: #40342E; --raised: #5A4A42; --input: #221B18;
     --link: #F28C9B; --heart: #EC6F80; --heart-soft: #4A2B31; --heart-deep: #FFB8C2;
     --ok: #8DCB9B; --danger: #FF8A80; --hairline: rgba(255, 235, 220, .16);
+    --danger-soft: rgba(255, 138, 128, .12); --danger-line: rgba(255, 138, 128, .34);
     --star: #E8B54F; --star-off: #7D6A5E;
     --anyone-1: #4A3226; --anyone-2: #4A2C33; --anyone-3: #3E2C40;
     color-scheme: dark;
@@ -90,6 +92,15 @@ hr { border: 0; border-top: 1px solid var(--hairline); margin: 2px 0; width: 100
 }
 .field input:focus { border-color: var(--heart); }
 input::placeholder { color: var(--faint); opacity: .8; }
+/* One's own link in "add by link": a red field, a note with a way to send it, the rest faded. */
+.field input.bad, .field input.bad:focus { border: 2px solid var(--danger); background: var(--danger-soft); color: var(--danger); }
+.own-link { display: flex; flex-direction: column; gap: 10px; padding: 11px; border-radius: 11px; background: var(--danger-soft); box-shadow: inset 0 0 0 1px var(--danger-line); color: var(--ink); }
+.own-link .what { display: flex; gap: 7px; align-items: flex-start; font-size: 13px; line-height: 1.4; }
+.own-link .what .icon { color: var(--danger); flex: none; margin-top: 1px; }
+.own-link b { display: block; color: var(--danger); font-size: 13.5px; }
+.own-link .pill { display: inline-flex; align-items: center; gap: 6px; }
+.own-link .pill:not(.danger-fill) { background: var(--paper); box-shadow: inset 0 0 0 1px var(--hairline); }
+.dimmed { opacity: .4; pointer-events: none; }
 .search { display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border-radius: 9px; background: var(--field); }
 .search .icon { color: var(--faint); font-size: 12px; }
 .search input { flex: 1; min-width: 0; border: 0; outline: none; background: none; color: var(--ink); font: inherit; }

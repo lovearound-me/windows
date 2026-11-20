@@ -347,6 +347,25 @@ function LinkCard({ url, caption, aria, title }) {
   </button>`;
 }
 
+/// Under the link field when it holds one's own link: what it is for, a copy
+/// of it with the line to send along, and a way out.
+function OwnLinkNote({ url, onClear }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    invoke('copy', { text: `${INVITE_MESSAGE}\n${url}` });
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+  return html`<div class="own-link" role="alert">
+    <div class="what"><${Icon} name="alert" />
+      <span><b>${tr('Это твоя собственная ссылка')}</b>${tr('Отправь её тому, кто будет о тебе думать.')}</span></div>
+    <div class="row" style="gap: 8px">
+      <button class="pill danger-fill" onClick=${copy}><${Icon} name=${copied ? 'check' : 'copy'} />${copied ? tr('Скопировано') : tr('Скопировать')}</button>
+      <button class="pill" onClick=${onClear}>${tr('Очистить')}</button>
+    </div>
+  </div>`;
+}
+
 /// Adding someone by their invite link: the popover's "Новый человек" and the
 /// book's "Добавить по ссылке". The server never says whether a code belongs
 /// to anyone (so codes can't be probed): only its shape is checked here.
@@ -366,7 +385,10 @@ export function ContactForm({ model, invite, onDone, onAdded }) {
 
   const label = name.trim();
   const code = link.trim() ? inviteId(link) : null;
-  const canSave = label.length >= 1 && label.length <= 64 && code;
+  // One's own link, pasted to add oneself: said at once, with the way to send it instead.
+  const bare = (c) => c && c.toUpperCase().replaceAll('-', '');
+  const own = !!code && bare(code) === bare(inviteId(model.inviteUrl || ''));
+  const canSave = label.length >= 1 && label.length <= 64 && code && !own;
 
   const save = async () => {
     if (!canSave || busy) return;
@@ -389,24 +411,28 @@ export function ContactForm({ model, invite, onDone, onAdded }) {
     </div>`}
 
     <${Field} title=${tr('Ссылка-приглашение')}>
-      <input value=${link} placeholder="lovearound.me/i/…" spellcheck="false" onInput=${(e) => setLink(e.target.value)} />
+      <input class=${own ? 'bad' : ''} value=${link} placeholder="lovearound.me/i/…" spellcheck="false" onInput=${(e) => setLink(e.target.value)} />
     <//>
     <div style="font-size: 12.5px; margin-top: -6px">
       ${!link.trim()
         ? html`<span class="faint">${tr('Вставь ссылку, которую тебе прислали')}</span>`
-        : code
-          ? html`<span class="ok row" style="gap: 5px"><${Icon} name="check" />${tr('Ссылка в порядке. Осталось подписать.')}</span>`
-          : html`<span class="muted">${tr('Не похоже на ссылку-приглашение')}</span>`}
+        : own
+          ? html`<${OwnLinkNote} url=${model.inviteUrl} onClear=${() => setLink('')} />`
+          : code
+            ? html`<span class="ok row" style="gap: 5px"><${Icon} name="check" />${tr('Ссылка в порядке. Осталось подписать.')}</span>`
+            : html`<span class="muted">${tr('Не похоже на ссылку-приглашение')}</span>`}
     </div>
 
-    <${Field} title=${tr('Как назовёшь?')}>
-      <input value=${name} placeholder=${tr('Например, Мама')} onInput=${(e) => setName(e.target.value)}
-        onKeyDown=${(e) => e.key === 'Enter' && save()} />
-    <//>
+    <div class=${'col' + (own ? ' dimmed' : '')} style="gap: 14px">
+      <${Field} title=${tr('Как назовёшь?')}>
+        <input value=${name} placeholder=${tr('Например, Мама')} onInput=${(e) => setName(e.target.value)}
+          onKeyDown=${(e) => e.key === 'Enter' && save()} />
+      <//>
 
-    <div class="col" style="gap: 8px">
-      <div class="row"><${Caption}>${tr('Цвет')}<//><span class="grow"></span><span class="small" style=${{ color: p.deep }}>${p.name}</span></div>
-      <${SwatchPicker} value=${color} onChange=${setColor} size=${30} />
+      <div class="col" style="gap: 8px">
+        <div class="row"><${Caption}>${tr('Цвет')}<//><span class="grow"></span><span class="small" style=${{ color: p.deep }}>${p.name}</span></div>
+        <${SwatchPicker} value=${color} onChange=${setColor} size=${30} />
+      </div>
     </div>
 
     <button class="primary" disabled=${!canSave || busy} onClick=${save}>${busy ? tr('Сохраняем…') : tr('Добавить')}</button>
