@@ -369,6 +369,15 @@ fn main() {
                 .ok()
                 .flatten()
                 .is_some_and(|urls| handle_urls(&handle, urls.into_iter().map(|u| u.to_string())));
+            // Downloaded from someone's Love ID page: the page put the link on
+            // the clipboard, so the first launch opens «Добавить» with it (after
+            // signing in). Only the first launch looks; nothing leaves the PC.
+            let launched_by_link = launched_by_link
+                || (model.first_launch
+                    && model
+                        .pasted_invite(handle.clipboard().read_text().ok())
+                        .map(|code| model.handle_url(&format!("{}://add/{code}", config::URL_SCHEMES[0])))
+                        .is_some());
             let at_login = std::env::args().any(|a| a == AUTOSTART_FLAG);
             // The heart is often hidden in the tray's overflow: a launch by hand
             // opens the popover, so the app is visibly there.

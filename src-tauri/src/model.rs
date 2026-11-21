@@ -162,6 +162,8 @@ pub struct Model {
     stream: UnboundedSender<Cmd>,
     state: Mutex<State>,
     settings_file: PathBuf,
+    /// No settings file yet: the app's first launch on this PC.
+    pub first_launch: bool,
     /// Saves go to the server one after another, in the order made, and a
     /// reload waits for them: halfway through it would show a new order half-applied.
     saving: tokio::sync::Mutex<()>,
@@ -179,7 +181,12 @@ impl Model {
         let auth = Arc::new(Auth::new(dir.clone(), http.clone()));
         let client = format!("windows/{}", app.package_info().version);
         let settings_file = dir.join("settings.json");
+        let first_launch = !settings_file.exists();
         let settings = Settings::load(&settings_file);
+        if first_launch {
+            // So the next launch isn't a first one too.
+            settings.save(&settings_file);
+        }
         crate::i18n::set(&settings.language);
         let (events_tx, mut events) = unbounded_channel();
         let stream = stream::spawn(auth.clone(), client.clone(), settings.takes_anyone(), events_tx);
@@ -190,6 +197,7 @@ impl Model {
             auth,
             stream,
             settings_file,
+            first_launch,
             saving: tokio::sync::Mutex::new(()),
             state: Mutex::new(State {
                 signed_in: false,
