@@ -75,6 +75,22 @@ function Signal({ model }) {
     </div>
 
     <button class="play" onClick=${() => invoke('play_effect')}><${Icon} name="play" />${tr('Показать, как это выглядит')}</button>
+
+    <${CircleLook} model=${model} />
+  </div>`;
+}
+
+/// "Кружки в меню": bare circles, or circles with names under them.
+const MINI = ['#F2B8C0', '#B9D9C9', '#C9C2EE', '#F5D59B'];
+function CircleLook({ model }) {
+  const named = model.settings.circleNames;
+  const mini = (withNames) => html`<span class="mini">${MINI.map((c) => html`<i><b style=${{ background: c }}></b>${withNames && html`<s></s>`}</i>`)}</span>`;
+  return html`<div class="col" style="gap: 8px">
+    <${Caption}>${tr('Кружки в меню')}<//>
+    <div class="look">
+      <button class=${named ? '' : 'on'} onClick=${() => set('circleNames', false)}>${mini(false)}${tr('Только кружки')}</button>
+      <button class=${named ? 'on' : ''} onClick=${() => set('circleNames', true)}>${mini(true)}${tr('С именами')}</button>
+    </div>
   </div>`;
 }
 
@@ -96,6 +112,11 @@ function When({ model }) {
   const s = model.settings;
   const gap = nearestGap(s.minGap);
   return html`<div class="col" style="gap: 18px">
+    <div class="card">
+      <${SwitchRow} title=${tr('Получать сердечки на этом компьютере')} on=${s.receiveHere} onChange=${(v) => set('receiveHere', v)} />
+    </div>
+    <${Note} style="margin-top: -10px">${tr('Выключишь, и этот компьютер не засветится. Телефон, часы и игрушки получают как раньше. Отправлять сердечки он может всегда.')}<//>
+
     <div class="col" style="gap: 8px">
       <${Caption}>${model.paused ? model.pauseText : tr('Пауза')}<//>
       ${model.paused

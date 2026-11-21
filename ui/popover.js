@@ -55,7 +55,11 @@ function Main({ model }) {
 
     ${model.offline && html`<${Banner} icon="wifiOff" text=${tr('Нет связи с сервером, сигналы сейчас не приходят. Переподключаемся…')} />`}
 
-    ${model.paused && html`<${Banner} icon="moon" text=${tr('{pause}. Сигналы не придут.', { pause: model.pauseText })}>
+    ${!model.settings.receiveHere && html`<${Banner} icon="moon" text=${tr('Этот компьютер не получает сердечки.')}>
+      <button class="link" style="font-size: 12.5px; font-weight: 600" onClick=${() => invoke('set_setting', { key: 'receiveHere', value: true })}>${tr('Включить')}</button>
+    <//>`}
+
+    ${model.settings.receiveHere && model.paused && html`<${Banner} icon="moon" text=${tr('{pause}. Сигналы не придут.', { pause: model.pauseText })}>
       <button class="link" style="font-size: 12.5px; font-weight: 600" onClick=${() => invoke('resume')}>${tr('Снять')}</button>
     <//>`}
 
@@ -148,23 +152,30 @@ function CloseCircles({ model }) {
     : invoke('open_book', {}));
   const addHelp = model.contacts.length === 0 ? tr('Добавить по ссылке') : tr('Добавить кружок');
 
+  // Settings → "Кружки в меню": bare circles (a name under them on hover), or
+  // each with its name under it.
+  const named = model.settings.circleNames;
+  const cell = (circle, name, style) => (named
+    ? html`<div class="cell">${circle}<span class="nm ellipsis" style=${style}>${name}</span></div>`
+    : circle);
   return html`<div class="col" style="gap: 4px">
-    <div class="circles">
-      <${AnyoneCircle} model=${model} now=${now} lift=${hovered === ANYONE} hover=${hover(ANYONE)} />
+    <div class=${'circles' + (named ? ' named' : '')}>
+      ${cell(html`<${AnyoneCircle} model=${model} now=${now} lift=${hovered === ANYONE} hover=${hover(ANYONE)} />`, tr('Кому-то'))}
       ${close.map((contact) => {
         const color = colorFor(contact);
         const sent = model.sent === contact.id;
-        return html`<button key=${contact.id} data-circle=${contact.id}
+        return cell(html`<button key=${contact.id} data-circle=${contact.id}
             class=${'circle' + (sent || hovered === contact.id ? ' lift' : '') + (dragging === contact.id ? ' dragging' : '')}
             style=${{ background: sent ? color.ring : color.tint, color: sent ? 'var(--paper)' : color.deep, boxShadow: `inset 0 0 0 3px ${color.ring}` }}
             title=${contact.label} aria-label=${contact.label}
             onClick=${() => invoke('send', { id: contact.id })} onPointerDown=${drag(contact)} ...${hover(contact.id)}>
           ${sent ? '♥' : firstLetter(contact.label)}
-        </button>`;
+        </button>`, contact.label, sent ? { color: color.deep } : null);
       })}
-      <button class="circle add" title=${addHelp} aria-label=${addHelp} onClick=${add}><${Icon} name="plus" /></button>
+      ${cell(html`<button class="circle add" title=${addHelp} aria-label=${addHelp} onClick=${add}><${Icon} name="plus" /></button>`, '')}
     </div>
-    <div class="circles-caption ellipsis">${caption(model, close, hovered, now)}</div>
+    ${!named || model.sent != null || hovered === ANYONE
+      ? html`<div class="circles-caption ellipsis">${caption(model, close, hovered, now)}</div>` : null}
   </div>`;
 }
 

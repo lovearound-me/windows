@@ -135,6 +135,16 @@ input[type=range]:disabled { opacity: .5; }
 .circle.anyone { background: linear-gradient(135deg, var(--anyone-1), var(--anyone-2), var(--anyone-3)); font-size: 20px; }
 .circle.anyone svg.ring { position: absolute; inset: 0; width: 50px; height: 50px; transform: rotate(-90deg); }
 .circles-caption { height: 18px; font-size: 12.5px; font-weight: 600; text-align: center; }
+.circles.named { grid-template-columns: repeat(5, 58px); gap: 10px 6px; }
+.circles.named .cell { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.circles.named .nm { max-width: 58px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-align: center; line-height: 1.2; }
+.look { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.look button { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 8px 10px; border-radius: 12px; background: var(--field); font-size: 12.5px; font-weight: 600; }
+.look button.on { box-shadow: inset 0 0 0 2px var(--link); }
+.look .mini { display: flex; gap: 5px; }
+.look .mini i { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.look .mini b { width: 18px; height: 18px; border-radius: 50%; display: block; }
+.look .mini s { width: 16px; height: 3px; border-radius: 2px; background: var(--faint); display: block; text-decoration: none; }
 
 .invite { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--field); width: 100%; text-align: left; transition: background .15s; }
 .invite:hover { background: color-mix(in srgb, var(--link) 6%, var(--field)); }

@@ -19,12 +19,17 @@ pub struct Look {
     signed_in: bool,
     paused: bool,
     pause_text: String,
+    /// "Получать сердечки на этом компьютере" is off.
+    off: bool,
     lang: &'static str,
 }
 
 impl Look {
     pub fn of(state: &State) -> Self {
-        Look { signed_in: state.signed_in, paused: state.is_paused(), pause_text: state.pause_text(), lang: crate::i18n::lang() }
+        // Not receiving here looks like a pause that is never lifted.
+        let off = !state.settings.receive_here;
+        let pause_text = if off { tr!("Не получает сердечки") } else { state.pause_text() };
+        Look { signed_in: state.signed_in, paused: state.is_paused() || off, pause_text, off, lang: crate::i18n::lang() }
     }
 }
 
@@ -52,6 +57,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             let model = app.state::<Arc<Model>>();
             match event.id().as_ref() {
                 "resume" => model.resume(),
+                "receive-on" => model.set_receive_here(true),
                 "pause-hour" => model.pause(PauseLength::Hour),
                 "pause-morning" => model.pause(PauseLength::UntilMorning),
                 "pause-resumed" => model.pause(PauseLength::UntilResumed),
@@ -92,7 +98,10 @@ fn menu(app: &AppHandle, look: &Look) -> tauri::Result<Menu<Wry>> {
     let menu = Menu::new(app)?;
     let item = |id: &str, title: &str| MenuItem::with_id(app, id, title, true, None::<&str>);
     if look.signed_in {
-        if look.paused {
+        if look.off {
+            menu.append(&MenuItem::with_id(app, "pause-text", &look.pause_text, false, None::<&str>)?)?;
+            menu.append(&item("receive-on", &tr!("Получать сердечки снова"))?)?;
+        } else if look.paused {
             // No action: shown greyed, as a status line.
             menu.append(&MenuItem::with_id(app, "pause-text", &look.pause_text, false, None::<&str>)?)?;
             menu.append(&item("resume", &tr!("Снять паузу"))?)?;

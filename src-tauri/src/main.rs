@@ -128,6 +128,7 @@ async fn select_contact(model: M<'_>, id: Option<String>) -> Answer {
 async fn set_setting(model: M<'_>, key: String, value: Value) -> Answer {
     match key.as_str() {
         "acceptAnyone" => model.set_accept_anyone(value.as_bool().unwrap_or(true)),
+        "receiveHere" => model.set_receive_here(value.as_bool().unwrap_or(true)),
         "launchAtLogin" => model.set_launch_at_login(value.as_bool().unwrap_or(false)),
         "language" => model.set_language(value.as_str().unwrap_or("")),
         _ => model.update(|s| {

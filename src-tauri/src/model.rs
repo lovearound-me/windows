@@ -182,7 +182,7 @@ impl Model {
         let settings = Settings::load(&settings_file);
         crate::i18n::set(&settings.language);
         let (events_tx, mut events) = unbounded_channel();
-        let stream = stream::spawn(auth.clone(), client.clone(), settings.accept_anyone, events_tx);
+        let stream = stream::spawn(auth.clone(), client.clone(), settings.takes_anyone(), events_tx);
 
         let model = Arc::new(Model {
             api: Api::new(auth.clone(), http, client),
@@ -489,7 +489,7 @@ impl Model {
 
     fn receive(&self) {
         let show = self.update(|s| {
-            if s.is_paused() {
+            if s.is_paused() || !s.settings.receive_here {
                 return false;
             }
             // Not shown, and not saved for later: a signal is about the moment.
@@ -812,8 +812,19 @@ impl Model {
     }
 
     pub fn set_accept_anyone(&self, on: bool) {
-        self.update(|s| s.settings.accept_anyone = on);
-        let _ = self.stream.send(Cmd::Anyone(on));
+        let anyone = self.update(|s| {
+            s.settings.accept_anyone = on;
+            s.settings.takes_anyone()
+        });
+        let _ = self.stream.send(Cmd::Anyone(anyone));
+    }
+
+    pub fn set_receive_here(&self, on: bool) {
+        let anyone = self.update(|s| {
+            s.settings.receive_here = on;
+            s.settings.takes_anyone()
+        });
+        let _ = self.stream.send(Cmd::Anyone(anyone));
     }
 
     /// Everything in the language just chosen: the tray at once, the pages

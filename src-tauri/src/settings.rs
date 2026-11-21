@@ -22,6 +22,11 @@ pub struct Settings {
     pub min_gap: f64,
     /// "Сердечки от кого-нибудь на свете": the stream asks for signals to anyone.
     pub accept_anyone: bool,
+    /// "Получать сердечки на этом компьютере": off, this PC shows no signal at
+    /// all and its stream asks for none to anyone; it still sends.
+    pub receive_here: bool,
+    /// "Кружки в меню": each circle with its name under it, not only on hover.
+    pub circle_names: bool,
     /// When this PC last sent a signal to anyone (ms since the epoch): one an hour.
     pub anyone_sent_at: Option<i64>,
     /// When each contact was last sent a signal from this PC, for "Недавние".
@@ -53,6 +58,8 @@ impl Default for Settings {
             quiet_when_presenting: true,
             min_gap: 1.0,
             accept_anyone: true,
+            receive_here: true,
+            circle_names: false,
             anyone_sent_at: None,
             last_sent: HashMap::new(),
             paused_until: None,
@@ -67,6 +74,11 @@ impl Settings {
         let mut settings: Settings = std::fs::read(file).ok().and_then(|data| serde_json::from_slice(&data).ok()).unwrap_or_default();
         settings.min_gap = nearest_gap(settings.min_gap);
         settings
+    }
+
+    /// What the stream asks for: signals to anyone only while this PC shows them.
+    pub fn takes_anyone(&self) -> bool {
+        self.accept_anyone && self.receive_here
     }
 
     pub fn save(&self, file: &PathBuf) {
